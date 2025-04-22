@@ -23,17 +23,28 @@ fn main() -> Result<(), anyhow::Error> {
     mhz19c.init().context("Failed to initialize MH-Z19C")?;
 
     loop {
-        let measurements = bme280
-            .measure(&mut delay)
-            .context("Failed to read BME280")?;
+        let measurements = match bme280.measure(&mut delay) {
+            Ok(measurements) => measurements,
+            Err(e) => {
+                eprintln!("Failed to read BME280: {}", e);
+                thread::sleep(Duration::from_secs(1));
+                continue;
+            }
+        };
 
         let temperature = (measurements.temperature * 10f32).round() / 10f32;
         let humidity = (measurements.humidity * 10f32).round() / 10f32;
         let pressure = ((measurements.pressure / 100f32) * 10f32).round() / 10f32;
 
-        let co2_concentration = mhz19c
-            .read_co2_concentration()
-            .context("Failed to read CO2 concentration")?;
+        let co2_concentration = match mhz19c.read_co2_concentration() {
+            Ok(co2_concentration) => co2_concentration,
+            Err(e) => {
+                eprintln!("Failed to read MH-Z19C: {}", e);
+                thread::sleep(Duration::from_secs(1));
+                continue;
+            }
+        };
+        // .context("Failed to read CO2 concentration")?;
 
         println!(
             "[{}] temperature: {:.1} degC, humidity: {:.1} %, pressure: {:.1} hPa, co2: {} ppm",
