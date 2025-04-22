@@ -66,7 +66,7 @@ impl MHZ19C {
     }
 }
 
-pub fn calculate_checksum(data: &[u8]) -> u8 {
+pub fn calculate_checksum(data: &[u8; 9]) -> u8 {
     let mut checksum: u8 = 0;
     for &packet in data.iter().skip(1).take(7) {
         checksum = checksum.wrapping_add(packet);
