@@ -1,0 +1,10 @@
+[package]
+name = "home-env-logger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+bme280 = { version = "0.5.1", features = ["with_std"] }
+chrono = "0.4.40"
+rppal = { version = "0.22.1", features = ["embedded-hal"] }
