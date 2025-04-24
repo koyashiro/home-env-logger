@@ -5,6 +5,11 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.98"
+backon = "1.5.0"
 bme280 = { version = "0.5.1", features = ["with_std"] }
 chrono = "0.4.40"
+log = "0.4.27"
 rppal = { version = "0.22.1", features = ["embedded-hal"] }
+rusqlite = { version = "0.35.0", features = ["bundled"] }
+simplelog = "0.12.2"
+tokio = { version = "1.44.2", features = ["macros", "rt-multi-thread", "signal"] }

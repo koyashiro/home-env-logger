@@ -72,7 +72,7 @@ pub fn calculate_checksum(data: &[u8; 9]) -> u8 {
         checksum = checksum.wrapping_add(packet);
     }
     checksum = 0xff - checksum;
-    checksum += 1;
+    checksum = checksum.wrapping_add(1);
     checksum
 }
 
