@@ -11,6 +11,7 @@ pub const READ_COMMAND: [u8; 9] = [0xff, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x0
 pub const RETURN_VALUE_START_BYTE: u8 = 0xff;
 pub const RETURN_VALUE_COMMAND: u8 = 0x86;
 
+#[derive(Debug)]
 pub struct MHZ19C {
     uart: Uart,
 }

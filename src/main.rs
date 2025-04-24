@@ -1,20 +1,16 @@
-use std::time::Duration;
-
-use anyhow::Context;
-use backon::BlockingRetryable;
-use backon::ConstantBuilder;
-use bme280::i2c::BME280;
-use chrono::Local;
-use db::DB;
-use log::LevelFilter;
-use measurement::Measurement;
-use mh_z19c::MHZ19C;
-use rppal::{hal::Delay, i2c::I2c};
-use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
-
 mod db;
 mod measurement;
 mod mh_z19c;
+mod sensor;
+
+use std::time::Duration;
+
+use anyhow::Context;
+use backon::{BlockingRetryable, ConstantBuilder};
+use log::LevelFilter;
+use simplelog::{ColorChoice, ConfigBuilder, TermLogger, TerminalMode};
+
+use crate::{db::DB, sensor::Sensor};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -42,19 +38,8 @@ pub async fn run() -> Result<(), anyhow::Error> {
         .with_delay(Duration::from_millis(100))
         .with_max_times(20);
 
-    let mut bme280 = BME280::new_primary(I2c::new().context("Failed to initialize I2C")?);
-    (|| bme280.init(&mut Delay))
-        .retry(retry_builder)
-        .notify(|e, dur| {
-            log::error!("{e}");
-            log::info!("Retrying in {:?}", dur);
-        })
-        .call()?;
-
-    let mut delay = Delay;
-
-    let mut mhz19c = MHZ19C::new().context("Failed to initialize MH-Z19C")?;
-    (|| mhz19c.init())
+    let mut sensor = Sensor::new().context("Failed to initialize sensor")?;
+    (|| sensor.init())
         .retry(retry_builder)
         .notify(|e, dur| {
             log::error!("{e}");
@@ -70,7 +55,7 @@ pub async fn run() -> Result<(), anyhow::Error> {
         loop {
             ticker.tick().await;
 
-            let measurements = match (|| bme280.measure(&mut delay))
+            let measurement = match (|| sensor.measure())
                 .retry(retry_builder)
                 .notify(|e, dur| {
                     log::error!("{e}");
@@ -78,35 +63,19 @@ pub async fn run() -> Result<(), anyhow::Error> {
                 })
                 .call()
             {
-                Ok(measurements) => measurements,
+                Ok(m) => m,
                 Err(e) => {
-                    log::error!("Failed to read BME280 measurements: {}", e);
+                    log::error!("Failed to read sensor data: {}", e);
                     continue;
                 }
             };
 
-            let co2_concentration = match mhz19c.read_co2_concentration() {
-                Ok(co2_concentration) => co2_concentration,
-                Err(e) => {
-                    log::error!("Failed to read MH-Z19C CO2 concentration: {}", e);
-                    continue;
-                }
-            };
-
-            let data = Measurement {
-                timestamp: Local::now(),
-                temperature: measurements.temperature,
-                humidity: measurements.humidity,
-                pressure: measurements.pressure,
-                co2_concentration,
-            };
-
-            if let Err(e) = db.insert(&data) {
+            if let Err(e) = db.insert(&measurement) {
                 log::error!("Failed to insert data into database: {e}");
                 continue;
             }
 
-            log::info!("{data:?}");
+            log::info!("{measurement:?}");
         }
     });
 
